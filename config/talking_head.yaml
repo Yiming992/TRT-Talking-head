@@ -1,0 +1,21 @@
+morpher_params:
+  image_channels: 4
+  pose_size: 3
+  intermediate_channels: 64
+  bottleneck_block_count: 6
+  morpher_weights: "data/face_morpher.pt"
+
+rotator_params:
+  image_channels: 4
+  pose_size: 3
+  intermediate_channels: 64
+  bottleneck_block_count: 6
+  rotator_weights: "data/two_algo_face_rotator.pt"
+
+combine_params:
+  image_channels: 4
+  pose_size: 3
+  intermediate_channels: 64
+  bottleneck_block_count: 6
+  combine_weights: "data/combiner.pt"
+
