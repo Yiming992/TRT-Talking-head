@@ -151,7 +151,7 @@ class Morpher:
         output_image.name = "morphed_image"
         network.mark_output(output_image)
         
-        return network, output_image, input_shape
+        return output_image, input_shape
 
 class Rotator:
     # Network that involves two face rotator algorihms
@@ -223,7 +223,7 @@ class Rotator:
         network.mark_output(color_changed)
         network.mark_output(resampled)
 
-        return network, color_changed, resampled
+        return color_changed, resampled
 
 class Combiner:
     # Network that combines the results from the two rotation algorithms in the rotator network
@@ -282,7 +282,7 @@ class Combiner:
         final.name = "final_image"
         network.mark_output(final)
 
-        return network
+        return 
 
 if __name__=="__main__":
     
@@ -295,7 +295,7 @@ if __name__=="__main__":
     parser.add_argument("-c", "--config", default="config/talking_head.yaml",help="The folder containing the config.yaml")
     parser.add_argument("--fp16", action="store_true", help="Indicates that inference should be run in FP16 precision", required=False)
     parser.add_argument("--int8", action="store_true", help="Indicates that inference should be run in INT8 precision", required=False)
-    parser.add_argument("-w", "--workspace_size", default=4000, help="Workspace size in MiB for building the BERT engine", type=int)
+    parser.add_argument("-w", "--workspace_size", default=4000, help="Workspace size in MiB for building the TRT engine", type=int)
     parser.add_argument("-v", "--verbosity", action="count", help="Verbosity for logging. (None) for ERROR, (-v) for INFO/WARNING/ERROR, (-vv) for VERBOSE.")
     parser.add_argument("--gpu_fallback", action='store_true', help="Set trt.BuilderFlag.GPU_FALLBACK.")
     parser.add_argument("--refittable", action='store_true', help="Set trt.BuilderFlag.REFIT.")
@@ -387,7 +387,7 @@ if __name__=="__main__":
          builder.create_network(network_flags) as network,\
          builder.create_builder_config() as config:
 
-         config.max_workspace_size = args.workspace_size
+         config.max_workspace_size = args.workspace_size * (1024*1024)
 
          # Set Builder Config Flags
          for flag in builder_flag_map:
@@ -409,21 +409,21 @@ if __name__=="__main__":
                            intermediate_channels=configs["morpher_params"]["intermediate_channels"],
                            bottleneck_block_count=configs["morpher_params"]["bottleneck_block_count"],
                            kernel_ws=morpher_weights)
-         morpher_network, output_image, input_shape = morpher(network)
+         output_image, input_shape = morpher(network)
 
          rotator = Rotator(image_channels=configs["rotator_params"]["image_channels"],
                            pose_size=configs["rotator_params"]["pose_size"],
                            intermediate_channels=configs["rotator_params"]["intermediate_channels"],
                            bottleneck_block_count=configs["rotator_params"]["bottleneck_block_count"],
                            kernel_ws=rotator_weights)
-         rotator_network, color_changed, resampled= rotator(morpher_network,output_image,input_shape)
+         color_changed, resampled= rotator(network,output_image,input_shape)
 
          combiner = Combiner(image_channels=configs["combine_params"]["image_channels"],
                              pose_size=configs["combine_params"]["pose_size"],
                              intermediate_channels=configs["combine_params"]["intermediate_channels"],
                              bottleneck_block_count=configs["combine_params"]["bottleneck_block_count"],
                              kernel_ws=combiner_weights)
-         final_network = combiner(rotator_network,color_changed,resampled,input_shape)
+         combiner(network,color_changed,resampled,input_shape)
 
          print("Network has ", network.num_layers, " layers")
          TRT_LOGGER.log(trt.Logger.INFO, msg="Network populated, now build the engine")
@@ -432,7 +432,7 @@ if __name__=="__main__":
          opt_profile = create_optimization_profile(builder, inputs, args.batch_size, args.height, args.width)
          add_profile(config, inputs, opt_profile)
 
-         with builder.build_engine(final_network,config) as engine, \
+         with builder.build_engine(network,config) as engine, \
              open(args.output,"wb") as f:
              print("serializing the engine")
              f.write(engine.serialize())
