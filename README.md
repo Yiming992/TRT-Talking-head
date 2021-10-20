@@ -39,9 +39,6 @@ After the engine is built
 we can run inference on a sample image using, for example
 >python run_inference.py -e model.engine -n 300 -s images/img_8.png -f 5 -o results/output_1.gif
 
-## Samples
-<img src="results/output_0.gif" width="256" height="256" hspace="100"><img src="results/output_1.gif" width="256" height="256" hspace="100">
-
 ## GUI Application
 you can also run a simple desktop GUI application using
 >python app.py
